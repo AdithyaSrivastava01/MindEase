@@ -1,13 +1,19 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Heart, AlertCircle, Loader2 } from 'lucide-react';
+import { Send, Heart, AlertCircle, Loader2, Wind, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import MoodTracker from './MoodTracker';
+import BreathingExercise from './BreathingExercise';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  suggestions?: {
+    breathingExercise: boolean;
+    moodTracking: boolean;
+  };
 }
 
 export default function Chat() {
@@ -23,6 +29,8 @@ export default function Chat() {
   const [showCrisisResources, setShowCrisisResources] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [showMoodTracker, setShowMoodTracker] = useState(false);
+  const [showBreathingExercise, setShowBreathingExercise] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -74,7 +82,8 @@ export default function Chat() {
       const assistantMessage: Message = {
         role: 'assistant',
         content: data.content,
-        timestamp: new Date()
+        timestamp: new Date(),
+        suggestions: data.suggestions
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -140,31 +149,74 @@ export default function Chat() {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-4 space-y-4">
           {messages.map((message, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[70%] rounded-2xl px-4 py-3 ${
-                  message.role === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white shadow-md text-gray-800'
-                }`}
+            <div key={index}>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
-                <p className={`text-xs mt-1 ${
-                  message.role === 'user' ? 'text-blue-100' : 'text-gray-400'
-                }`}>
-                  {new Date(message.timestamp).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </p>
-              </div>
-            </motion.div>
+                <div
+                  className={`max-w-[70%] rounded-2xl px-4 py-3 ${
+                    message.role === 'user'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white shadow-md text-gray-800'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  <p className={`text-xs mt-1 ${
+                    message.role === 'user' ? 'text-blue-100' : 'text-gray-400'
+                  }`}>
+                    {new Date(message.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* Suggestion Cards */}
+              {message.role === 'assistant' && message.suggestions && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="flex justify-start mt-2 ml-2"
+                >
+                  <div className="max-w-[70%] space-y-2">
+                    {message.suggestions.breathingExercise && (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowBreathingExercise(true)}
+                        className="w-full flex items-center space-x-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+                      >
+                        <Wind className="w-5 h-5" />
+                        <div className="text-left">
+                          <div className="font-semibold text-sm">Try Breathing Exercise</div>
+                          <div className="text-xs opacity-90">Take a moment to calm down</div>
+                        </div>
+                      </motion.button>
+                    )}
+
+                    {message.suggestions.moodTracking && (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowMoodTracker(true)}
+                        className="w-full flex items-center space-x-3 bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+                      >
+                        <TrendingUp className="w-5 h-5" />
+                        <div className="text-left">
+                          <div className="font-semibold text-sm">Track Your Mood</div>
+                          <div className="text-xs opacity-90">Log how you're feeling</div>
+                        </div>
+                      </motion.button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </div>
           ))}
           
           {isTyping && (
@@ -214,10 +266,101 @@ export default function Chat() {
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-2 text-center">
-            💙 Your conversations are private and secure. I'm here to support, not judge.
+            Your conversations are private and secure. I'm here to support, not judge.
           </p>
         </div>
       </div>
+
+      {/* Mood Tracker Modal */}
+      <AnimatePresence>
+        {showMoodTracker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowMoodTracker(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-gradient-to-r from-green-500 to-teal-500 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">Track Your Mood</h3>
+                <button
+                  onClick={() => setShowMoodTracker(false)}
+                  className="bg-white/20 hover:bg-white/30 text-white rounded-full p-2 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+                <MoodTracker onMoodLogged={(entry) => {
+                  setShowMoodTracker(false);
+                  setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: `Thanks for logging your mood! I can see you're feeling ${entry.score}/10. ${
+                      entry.score < 5
+                        ? "I'm here to support you. Would you like to talk about what's bothering you?"
+                        : "That's great to hear! What's contributing to your positive mood?"
+                    }`,
+                    timestamp: new Date()
+                  }]);
+                }} />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Breathing Exercise Modal */}
+      <AnimatePresence>
+        {showBreathingExercise && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowBreathingExercise(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">Breathing Exercise</h3>
+                <button
+                  onClick={() => setShowBreathingExercise(false)}
+                  className="bg-white/20 hover:bg-white/30 text-white rounded-full p-2 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+                <BreathingExercise />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
