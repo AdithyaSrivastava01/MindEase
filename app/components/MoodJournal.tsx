@@ -2,80 +2,136 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, TrendingUp, Sparkles, Calendar } from 'lucide-react';
+import { BookOpen, Sparkles, Calendar, Trash2, AlertTriangle } from 'lucide-react';
+import { useAuth } from '@/lib/useAuth';
+import { journalHelpers } from '@/lib/journalHelpers';
 
 interface JournalEntry {
   id: string;
+  user_id: string;
   date: Date;
   mood: number;
   content: string;
   insights?: string;
+  created_at?: string;
 }
 
 interface MoodJournalProps {
-  onEntryAdded?: (entry: JournalEntry) => void;
+  onEntryAdded?: (entry: { mood: number; insights?: string }) => void;
+  onEntryDeleted?: () => void;
 }
 
-export default function MoodJournal({ onEntryAdded }: MoodJournalProps) {
+export default function MoodJournal({ onEntryAdded, onEntryDeleted }: MoodJournalProps) {
+  const { user, loading: authLoading } = useAuth();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [currentEntry, setCurrentEntry] = useState('');
-  const [currentMood, setCurrentMood] = useState(5);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiInsight, setAiInsight] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Load entries from sessionStorage
-    const stored = sessionStorage.getItem('journalEntries');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setEntries(parsed.map((e: any) => ({ ...e, date: new Date(e.date) })));
+    if (user && !authLoading) {
+      loadEntries();
     }
-  }, []);
+  }, [user, authLoading]);
 
-  const moodEmojis = ['😢', '😔', '😐', '🙂', '😊', '😄', '🌟'];
-  const moodLabels = ['Very Low', 'Low', 'Below Average', 'Neutral', 'Good', 'Great', 'Excellent'];
+  const loadEntries = async () => {
+    if (!user) return;
 
-  const generateInsights = async (content: string, mood: number) => {
+    try {
+      setLoading(true);
+      const data = await journalHelpers.getEntries(user.id);
+      setEntries(data.map((e: any) => ({
+        ...e,
+        date: new Date(e.created_at),
+        insights: e.ai_insights?.insight
+      })));
+    } catch (error) {
+      console.error('Error loading entries:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getMoodEmoji = (mood: number) => {
+    if (mood >= 1 && mood <= 3) return '😢'; // Low mood range
+    if (mood >= 4 && mood <= 6) return '😐'; // Neutral mood range
+    if (mood >= 7 && mood <= 10) return '😊'; // Good mood range
+    return '😐';
+  };
+
+  const analyzeAndSave = async () => {
+    if (!currentEntry.trim() || !user) return;
+
     setIsAnalyzing(true);
     try {
-      const response = await fetch('/api/journal-insights', {
+      // Call the journal-analysis API to get AI score, emotions, and insights
+      const response = await fetch('/api/journal-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, mood })
+        body: JSON.stringify({ content: currentEntry })
       });
 
       const data = await response.json();
-      setAiInsight(data.insight || '');
+
+      // Save to database with AI-generated mood score and insights
+      await journalHelpers.createEntry({
+        user_id: user.id,
+        content: currentEntry,
+        mood: data.score || 5,
+        ai_insights: data.insights || '',
+        emotions: data.emotions || []
+      });
+
+      // Reload entries from database
+      await loadEntries();
+
+      // Call callback with AI-generated mood and insights
+      if (onEntryAdded) {
+        onEntryAdded({
+          mood: data.score || 5,
+          insights: data.insights
+        });
+      }
+
+      // Reset form
+      setCurrentEntry('');
     } catch (error) {
-      console.error('Failed to generate insights:', error);
-      setAiInsight('Thank you for sharing. Journaling is a powerful tool for self-reflection.');
+      console.error('Failed to analyze and save entry:', error);
+      alert('Failed to save journal entry. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const saveEntry = () => {
-    if (!currentEntry.trim()) return;
+  const handleDeleteClick = (entryId: string) => {
+    setDeleteConfirmId(entryId);
+  };
 
-    const newEntry: JournalEntry = {
-      id: Date.now().toString(),
-      date: new Date(),
-      mood: currentMood,
-      content: currentEntry,
-      insights: aiInsight
-    };
+  const confirmDelete = async (entryId: string) => {
+    if (!user) return;
 
-    const updatedEntries = [newEntry, ...entries];
-    setEntries(updatedEntries);
-    sessionStorage.setItem('journalEntries', JSON.stringify(updatedEntries));
+    try {
+      setLoading(true);
+      await journalHelpers.deleteEntry(entryId, user.id);
 
-    if (onEntryAdded) onEntryAdded(newEntry);
+      // Reload entries from database
+      await loadEntries();
 
-    // Reset form
-    setCurrentEntry('');
-    setCurrentMood(5);
-    setAiInsight('');
+      if (onEntryDeleted) onEntryDeleted();
+
+      setDeleteConfirmId(null);
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+      alert('Failed to delete journal entry. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmId(null);
   };
 
   return (
@@ -102,82 +158,43 @@ export default function MoodJournal({ onEntryAdded }: MoodJournalProps) {
       <div className="p-6 space-y-6">
         {!showHistory ? (
           <>
-            {/* Mood Slider */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                How are you feeling? {moodEmojis[currentMood - 1]}
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="7"
-                value={currentMood}
-                onChange={(e) => setCurrentMood(parseInt(e.target.value))}
-                className="w-full h-3 bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between mt-2">
-                <span className="text-xs text-gray-500">{moodLabels[0]}</span>
-                <span className="text-xs text-gray-600 font-medium">{moodLabels[currentMood - 1]}</span>
-                <span className="text-xs text-gray-500">{moodLabels[6]}</span>
-              </div>
-            </div>
-
             {/* Journal Entry */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 What's on your mind?
               </label>
+              <p className="text-xs text-gray-600 mb-3">
+                Write freely about your thoughts and feelings. AI will automatically analyze your mood and provide insights.
+              </p>
               <textarea
                 value={currentEntry}
                 onChange={(e) => setCurrentEntry(e.target.value)}
-                placeholder="Write freely about your thoughts, feelings, experiences... This is your private space."
-                className="w-full h-40 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-gray-800"
+                placeholder="Express yourself freely... Write about your day, feelings, thoughts, or anything on your mind. The AI will analyze your entry and provide insights."
+                className="w-full h-48 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-gray-800"
               />
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex space-x-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => generateInsights(currentEntry, currentMood)}
-                disabled={!currentEntry.trim() || isAnalyzing}
-                className="flex-1 flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-xl font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Sparkles className="w-5 h-5" />
-                <span>{isAnalyzing ? 'Analyzing...' : 'Get AI Insights'}</span>
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={saveEntry}
-                disabled={!currentEntry.trim()}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Save Entry
-              </motion.button>
+            {/* Mood Score Legend */}
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-3">
+              <p className="text-xs font-semibold text-purple-900 mb-2">AI Mood Scoring:</p>
+              <div className="flex justify-around text-xs text-gray-700">
+                <span>😢 1-3 Low</span>
+                <span>😐 4-6 Neutral</span>
+                <span>😊 7-10 Good</span>
+              </div>
             </div>
 
-            {/* AI Insights */}
-            <AnimatePresence>
-              {aiInsight && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-purple-200 rounded-xl p-4"
-                >
-                  <div className="flex items-start space-x-3">
-                    <Sparkles className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <h4 className="font-semibold text-purple-900 mb-1">AI Insights</h4>
-                      <p className="text-sm text-purple-800">{aiInsight}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Action Button */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={analyzeAndSave}
+              disabled={!currentEntry.trim() || isAnalyzing || !user}
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              <Sparkles className="w-5 h-5" />
+              <span>{isAnalyzing ? 'Analyzing & Saving...' : 'Save & Analyze with AI'}</span>
+            </motion.button>
           </>
         ) : (
           /* Journal History */
@@ -204,11 +221,12 @@ export default function MoodJournal({ onEntryAdded }: MoodJournalProps) {
                     key={entry.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="bg-gray-50 border border-gray-200 rounded-xl p-4"
+                    className="bg-gray-50 border border-gray-200 rounded-xl p-4 relative"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
-                        <span className="text-2xl">{moodEmojis[entry.mood - 1]}</span>
+                        <span className="text-2xl">{getMoodEmoji(entry.mood)}</span>
+                        <span className="text-sm font-medium text-gray-700">{entry.mood}/10</span>
                         <span className="text-sm text-gray-600">
                           {new Date(entry.date).toLocaleDateString('en-US', {
                             month: 'short',
@@ -217,7 +235,51 @@ export default function MoodJournal({ onEntryAdded }: MoodJournalProps) {
                           })}
                         </span>
                       </div>
+
+                      {/* Delete Button */}
+                      {deleteConfirmId !== entry.id && (
+                        <button
+                          onClick={() => handleDeleteClick(entry.id)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete entry"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
+
+                    {/* Delete Confirmation */}
+                    <AnimatePresence>
+                      {deleteConfirmId === entry.id && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute inset-0 bg-red-50 border-2 border-red-300 rounded-xl p-4 flex flex-col items-center justify-center space-y-3"
+                        >
+                          <div className="flex items-center space-x-2 text-red-700">
+                            <AlertTriangle className="w-5 h-5" />
+                            <p className="font-semibold text-sm">Delete this entry?</p>
+                          </div>
+                          <p className="text-xs text-red-600 text-center">This action cannot be undone</p>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={cancelDelete}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => confirmDelete(entry.id)}
+                              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
                     <p className="text-sm text-gray-700 mb-2">{entry.content}</p>
                     {entry.insights && (
                       <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-2">

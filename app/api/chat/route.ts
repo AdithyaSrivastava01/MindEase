@@ -54,7 +54,8 @@ function detectBreathingExerciseNeed(message: string): boolean {
   const keywords = [
     "anxious", "anxiety", "panic", "panicking", "stressed", "stress",
     "overwhelmed", "can't breathe", "heart racing", "nervous",
-    "worried", "tense", "can't calm down", "freaking out"
+    "worried", "tense", "can't calm down", "freaking out",
+    "distressed", "distress", "need to relax", "help me relax"
   ];
 
   const lowerMessage = message.toLowerCase();
@@ -77,12 +78,15 @@ function detectMoodJournalNeed(messages: ChatMessage[]): boolean {
 }
 
 function detectASMRNeed(message: string): boolean {
-  // Suggest ASMR/calming audio for severe distress, overwhelm, or when highly stressed
+  // Suggest ASMR/calming audio for severe distress, overwhelm, relaxation requests, or when highly stressed
   const keywords = [
     "can't take it", "too much", "overwhelming", "drowning", "breaking down",
     "falling apart", "can't cope", "exhausted", "burnt out", "hopeless",
     "give up", "can't handle", "breaking point", "spiraling", "losing it",
-    "need escape", "need to relax", "need calm", "can't think straight"
+    "need escape", "need to relax", "need calm", "can't think straight",
+    "soothing", "calm down", "relax", "asmr", "calming", "peaceful",
+    "help me relax", "something soothing", "listen to something", "calm music",
+    "need peace", "meditation", "tranquil", "destress", "unwind"
   ];
 
   const lowerMessage = message.toLowerCase();

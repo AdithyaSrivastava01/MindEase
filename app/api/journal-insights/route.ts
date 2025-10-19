@@ -27,7 +27,7 @@ Keep your response to 2-3 sentences. Be warm, supportive, and therapeutically me
         },
         {
           role: "user",
-          content: `Journal Entry (Mood: ${mood}/7):\n\n${content}\n\nProvide supportive insight on this journal entry.`
+          content: `Journal Entry (Mood: ${mood}/10):\n\n${content}\n\nProvide supportive insight on this journal entry.`
         }
       ],
       temperature: 0.7,

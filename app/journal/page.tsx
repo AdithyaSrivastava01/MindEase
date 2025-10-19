@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { BookOpen, TrendingUp, Sparkles, ArrowLeft, Calendar, Smile, Frown, Meh } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, TrendingUp, Sparkles, ArrowLeft, Calendar, Trash2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/useAuth';
+import { journalHelpers } from '@/lib/journalHelpers';
 
 interface JournalEntry {
   id: string;
@@ -15,22 +17,43 @@ interface JournalEntry {
 }
 
 export default function JournalPage() {
+  const { user, loading: authLoading } = useAuth();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [currentEntry, setCurrentEntry] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showNewEntry, setShowNewEntry] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load entries from sessionStorage
-    const stored = sessionStorage.getItem('journalEntries');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setEntries(parsed.map((e: any) => ({ ...e, date: new Date(e.date) })));
+    if (user && !authLoading) {
+      loadEntries();
     }
-  }, []);
+  }, [user, authLoading]);
+
+  const loadEntries = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const data = await journalHelpers.getEntries(user.id);
+      setEntries(data.map((e: any) => ({
+        id: e.id,
+        date: new Date(e.created_at),
+        aiScore: e.ai_score || e.mood || 5,
+        content: e.content,
+        aiInsights: e.ai_insights?.insight || '',
+        emotions: Array.isArray(e.emotions) ? e.emotions : (e.emotions ? [] : [])
+      })));
+    } catch (error) {
+      console.error('Error loading entries:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const analyzeAndSave = async () => {
-    if (!currentEntry.trim()) return;
+    if (!currentEntry.trim() || !user) return;
 
     setIsAnalyzing(true);
     try {
@@ -42,24 +65,24 @@ export default function JournalPage() {
 
       const data = await response.json();
 
-      const newEntry: JournalEntry = {
-        id: Date.now().toString(),
-        date: new Date(),
-        aiScore: data.score || 5,
+      // Save to database
+      await journalHelpers.createEntry({
+        user_id: user.id,
         content: currentEntry,
-        aiInsights: data.insights || '',
+        mood: data.score || 5,
+        ai_insights: data.insights || '',
         emotions: data.emotions || []
-      };
+      });
 
-      const updatedEntries = [newEntry, ...entries];
-      setEntries(updatedEntries);
-      sessionStorage.setItem('journalEntries', JSON.stringify(updatedEntries));
+      // Reload entries
+      await loadEntries();
 
       // Reset form
       setCurrentEntry('');
       setShowNewEntry(false);
     } catch (error) {
       console.error('Failed to analyze entry:', error);
+      alert('Failed to save journal entry. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -72,9 +95,37 @@ export default function JournalPage() {
   };
 
   const getScoreEmoji = (score: number) => {
-    if (score >= 7) return '😊';
-    if (score >= 4) return '😐';
-    return '😔';
+    if (score >= 7 && score <= 10) return '😊'; // Good mood range (7-10)
+    if (score >= 4 && score <= 6) return '😐'; // Neutral mood range (4-6)
+    if (score >= 1 && score <= 3) return '😢'; // Low mood range (1-3)
+    return '😐';
+  };
+
+  const handleDeleteClick = (entryId: string) => {
+    setDeleteConfirmId(entryId);
+  };
+
+  const confirmDelete = async (entryId: string) => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      await journalHelpers.deleteEntry(entryId, user.id);
+
+      // Reload entries from database
+      await loadEntries();
+
+      setDeleteConfirmId(null);
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+      alert('Failed to delete journal entry. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmId(null);
   };
 
   const averageScore = entries.length > 0
@@ -209,7 +260,7 @@ export default function JournalPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow relative"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-4">
@@ -241,7 +292,50 @@ export default function JournalPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Delete Button */}
+                  {deleteConfirmId !== entry.id && (
+                    <button
+                      onClick={() => handleDeleteClick(entry.id)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete entry"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
+
+                {/* Delete Confirmation */}
+                <AnimatePresence>
+                  {deleteConfirmId === entry.id && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="absolute inset-0 bg-red-50 border-2 border-red-300 rounded-2xl p-6 flex flex-col items-center justify-center space-y-4 z-10"
+                    >
+                      <div className="flex items-center space-x-2 text-red-700">
+                        <AlertTriangle className="w-6 h-6" />
+                        <p className="font-semibold text-lg">Delete this entry?</p>
+                      </div>
+                      <p className="text-sm text-red-600 text-center">This action cannot be undone</p>
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={cancelDelete}
+                          className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => confirmDelete(entry.id)}
+                          className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <div className="prose max-w-none mb-4">
                   <p className="text-gray-700 whitespace-pre-wrap">{entry.content}</p>

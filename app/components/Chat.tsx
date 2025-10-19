@@ -167,7 +167,7 @@ export default function Chat() {
             </Link>
             <Heart className="w-6 h-6 text-pink-500" />
             <div>
-              <h1 className="text-xl font-semibold text-gray-800">Mindful Companion</h1>
+              <h1 className="text-xl font-semibold text-gray-800">MindEase Companion</h1>
               <div className="flex items-center space-x-2 mt-0.5">
                 <span className="text-xs text-gray-500">Mode:</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -488,10 +488,21 @@ export default function Chat() {
               <div className="overflow-y-auto max-h-[90vh]">
                 <MoodJournal onEntryAdded={(entry) => {
                   setShowMoodJournal(false);
+
+                  // Create a friendly response based on mood
+                  let moodResponse = '';
+                  if (entry.mood >= 7) {
+                    moodResponse = `That's wonderful! Your mood score of ${entry.mood}/10 shows you're doing well. `;
+                  } else if (entry.mood >= 4) {
+                    moodResponse = `I see you rated your mood as ${entry.mood}/10. `;
+                  } else {
+                    moodResponse = `I'm here for you. I noticed your mood is ${entry.mood}/10. `;
+                  }
+
                   setMessages(prev => [...prev, {
                     role: 'assistant',
-                    content: `Thank you for journaling. I noticed you're feeling ${entry.mood}/7. ${
-                      entry.insights ? "I hope the insights were helpful. " : ""
+                    content: `Thank you for journaling. ${moodResponse}${
+                      entry.insights ? "I hope the AI insights were helpful. " : ""
                     }Would you like to talk about what you wrote?`,
                     timestamp: new Date()
                   }]);

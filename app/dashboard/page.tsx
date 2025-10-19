@@ -4,52 +4,74 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, MessageCircle, BookOpen, Volume2, Wind,
-  TrendingUp, Sparkles, Calendar, Award, Shield
+  TrendingUp, Sparkles, Calendar, Award, Shield, User, LogOut, ChevronDown
 } from 'lucide-react';
 import BreathingExercise from '../components/BreathingExercise';
 import Link from 'next/link';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useAuth } from '@/lib/useAuth';
+import { journalHelpers } from '@/lib/journalHelpers';
 
 export default function Dashboard() {
+  const { user, loading, signOut } = useAuth();
   const [moodData, setMoodData] = useState<any[]>([]);
   const [journalCount, setJournalCount] = useState(0);
   const [averageMood, setAverageMood] = useState('0.0');
   const [showBreathingModal, setShowBreathingModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
-    const loadJournalData = () => {
-      const journalEntries = sessionStorage.getItem('journalEntries');
-      if (journalEntries) {
-        const parsed = JSON.parse(journalEntries);
-        setJournalCount(parsed.length);
+    if (user && !loading) {
+      loadJournalData();
 
-        // Calculate average mood
-        if (parsed.length > 0) {
-          const avg = parsed.reduce((sum: number, e: any) => sum + (e.aiScore || e.score || 5), 0) / parsed.length;
-          setAverageMood(avg.toFixed(1));
-        }
+      // Poll for updates every 5 seconds
+      const pollInterval = setInterval(loadJournalData, 5000);
+      return () => clearInterval(pollInterval);
+    }
+  }, [user, loading]);
 
-        // Get last 7 entries for chart
-        const last7 = parsed.slice(0, 7);
-        const chartData = last7.map((entry: any, idx: number) => {
-          const entryDate = new Date(entry.date);
+  const loadJournalData = async () => {
+    if (!user) return;
+
+    try {
+      setDataLoading(true);
+
+      // Get recent entries for chart
+      const entries = await journalHelpers.getRecentEntries(user.id, 7);
+
+      // Get total count
+      const count = await journalHelpers.getEntryCount(user.id);
+      setJournalCount(count);
+
+      // Calculate average mood
+      if (entries.length > 0) {
+        const avg = await journalHelpers.getAverageMood(user.id);
+        setAverageMood(avg.toFixed(1));
+
+        // Format chart data
+        const chartData = entries.reverse().map((entry: any, idx: number) => {
+          const entryDate = new Date(entry.created_at);
           const timeStr = entryDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
           return {
-            name: `Entry ${last7.length - idx}`,
-            day: timeStr, // Show time on X-axis for same-day entries
-            mood: entry.aiScore || entry.score || 5,
+            name: `Entry ${idx + 1}`,
+            day: timeStr,
+            mood: entry.mood || 5,
             fullDate: entryDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
             time: timeStr
           };
-        }).reverse();
+        });
         setMoodData(chartData);
+      } else {
+        setAverageMood('0.0');
+        setMoodData([]);
       }
-    };
-
-    loadJournalData();
-    const pollInterval = setInterval(loadJournalData, 2000);
-    return () => clearInterval(pollInterval);
-  }, []);
+    } catch (error) {
+      console.error('Error loading journal data:', error);
+    } finally {
+      setDataLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
@@ -63,22 +85,53 @@ export default function Dashboard() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Mindful Campus
+                  MindEase
                 </h1>
                 <p className="text-xs text-gray-600">Your wellness dashboard</p>
               </div>
             </div>
-            <nav className="flex space-x-4">
-              <Link href="/chat">
-                <button className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors font-medium">
-                  Chat
-                </button>
-              </Link>
-              <Link href="/dashboard">
-                <button className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-md">
-                  Dashboard
-                </button>
-              </Link>
+            <nav className="flex items-center space-x-4">
+              {/* User Menu */}
+              {!loading && user && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="font-medium text-gray-800">{user.username}</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {showUserMenu && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden"
+                      >
+                        <div className="p-3 border-b border-gray-100">
+                          <p className="text-sm text-gray-600">Signed in as</p>
+                          <p className="font-semibold text-gray-800 truncate">{user.username}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            signOut();
+                          }}
+                          className="w-full px-4 py-3 text-left flex items-center space-x-3 text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span className="font-medium">Log Out</span>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </nav>
           </div>
         </div>
@@ -266,7 +319,7 @@ export default function Dashboard() {
                   >
                     <div className="flex items-center space-x-3">
                       <MessageCircle className="w-5 h-5" />
-                      <span>Support Chat</span>
+                      <span>MindEase Chat</span>
                     </div>
                     <span>→</span>
                   </motion.button>

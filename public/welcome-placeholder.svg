@@ -1,0 +1,45 @@
+<svg width="1184" height="864" viewBox="0 0 1184 864" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Gradient -->
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="circle-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a78bfa;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#f0abfc;stop-opacity:0.3" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1184" height="864" fill="url(#bg-gradient)" rx="20"/>
+
+  <!-- Decorative Circles -->
+  <circle cx="200" cy="150" r="80" fill="url(#circle-gradient)"/>
+  <circle cx="950" cy="700" r="100" fill="url(#circle-gradient)"/>
+  <circle cx="1000" cy="200" r="60" fill="url(#circle-gradient)"/>
+
+  <!-- Heart Icon -->
+  <g transform="translate(542, 280)">
+    <path d="M50 20 C50 10, 40 0, 30 0 C20 0, 10 10, 10 20 C10 10, 0 0, -10 0 C-20 0, -30 10, -30 20 C-30 40, 0 70, 50 100 C100 70, 130 40, 130 20 C130 10, 120 0, 110 0 C100 0, 90 10, 90 20 Z"
+          fill="white" opacity="0.9" transform="scale(1.5)"/>
+  </g>
+
+  <!-- MindEase Text -->
+  <text x="592" y="480" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle">
+    MindEase
+  </text>
+
+  <!-- Subtitle -->
+  <text x="592" y="540" font-family="Arial, sans-serif" font-size="32" fill="white" fill-opacity="0.9" text-anchor="middle">
+    Your Mental Wellness Companion
+  </text>
+
+  <!-- Bottom Text -->
+  <text x="592" y="620" font-family="Arial, sans-serif" font-size="24" fill="white" fill-opacity="0.7" text-anchor="middle">
+    Supporting college students on their mental health journey
+  </text>
+
+  <!-- Decorative Wave -->
+  <path d="M 0 700 Q 296 650, 592 700 T 1184 700 L 1184 864 L 0 864 Z" fill="white" fill-opacity="0.1"/>
+</svg>
