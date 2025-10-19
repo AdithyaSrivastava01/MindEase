@@ -66,7 +66,7 @@ export default function Dashboard() {
               </div>
             </div>
             <nav className="flex space-x-4">
-              <Link href="/">
+              <Link href="/chat">
                 <button className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors font-medium">
                   Chat
                 </button>
@@ -236,7 +236,7 @@ export default function Dashboard() {
             >
               <h3 className="text-lg font-bold text-gray-800 mb-8">Quick Actions</h3>
               <div className="flex flex-col gap-4">
-                <Link href="/">
+                <Link href="/chat">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}

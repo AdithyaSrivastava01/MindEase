@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Heart, AlertCircle, Loader2, Wind, BookOpen, Volume2, Settings } from 'lucide-react';
+import { Send, Heart, AlertCircle, Loader2, Wind, BookOpen, Volume2, Settings, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MoodTracker from './MoodTracker';
 import BreathingExercise from './BreathingExercise';
 import MoodJournal from './MoodJournal';
 import CalmingAudio from './CalmingAudio';
+import Link from 'next/link';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -114,6 +115,11 @@ export default function Chat() {
       <div className="bg-white shadow-sm border-b border-gray-100 p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
+            <Link href="/dashboard">
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Back to Dashboard">
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
+            </Link>
             <Heart className="w-6 h-6 text-pink-500" />
             <div>
               <h1 className="text-xl font-semibold text-gray-800">Mindful Companion</h1>
