@@ -13,8 +13,7 @@ interface AudioTrack {
   emoji: string;
   icon: any;
   color: string;
-  firebaseUrl?: string; // For future Firebase integration
-  localUrl: string; // Placeholder URLs
+  url: string;
   duration: string;
 }
 
@@ -27,7 +26,7 @@ const audioLibrary: AudioTrack[] = [
     emoji: '🌧️',
     icon: Cloud,
     color: 'from-blue-400 to-cyan-500',
-    localUrl: 'https://assets.mixkit.co/active_storage/sfx/2390/2390-preview.mp3',
+    url: 'https://assets.mixkit.co/active_storage/sfx/2390/2390-preview.mp3',
     duration: '10:00'
   },
   {
@@ -38,7 +37,7 @@ const audioLibrary: AudioTrack[] = [
     emoji: '🌊',
     icon: Waves,
     color: 'from-teal-400 to-blue-500',
-    localUrl: 'https://assets.mixkit.co/active_storage/sfx/2393/2393-preview.mp3',
+    url: 'https://assets.mixkit.co/active_storage/sfx/2393/2393-preview.mp3',
     duration: '15:00'
   },
   {
@@ -49,7 +48,7 @@ const audioLibrary: AudioTrack[] = [
     emoji: '🌲',
     icon: Music,
     color: 'from-green-400 to-emerald-500',
-    localUrl: 'https://assets.mixkit.co/active_storage/sfx/2394/2394-preview.mp3',
+    url: 'https://assets.mixkit.co/active_storage/sfx/2394/2394-preview.mp3',
     duration: '20:00'
   },
   {
@@ -60,7 +59,7 @@ const audioLibrary: AudioTrack[] = [
     emoji: '🍃',
     icon: WindIcon,
     color: 'from-cyan-400 to-teal-500',
-    localUrl: 'https://assets.mixkit.co/active_storage/sfx/2395/2395-preview.mp3',
+    url: 'https://assets.mixkit.co/active_storage/sfx/2395/2395-preview.mp3',
     duration: '12:00'
   },
   {
@@ -71,7 +70,7 @@ const audioLibrary: AudioTrack[] = [
     emoji: '🔔',
     icon: Music,
     color: 'from-purple-400 to-pink-500',
-    localUrl: 'https://assets.mixkit.co/active_storage/sfx/2396/2396-preview.mp3',
+    url: 'https://assets.mixkit.co/active_storage/sfx/2396/2396-preview.mp3',
     duration: '8:00'
   },
   {
@@ -82,7 +81,7 @@ const audioLibrary: AudioTrack[] = [
     emoji: '⚪',
     icon: Volume2,
     color: 'from-gray-400 to-slate-500',
-    localUrl: 'https://assets.mixkit.co/active_storage/sfx/2397/2397-preview.mp3',
+    url: 'https://assets.mixkit.co/active_storage/sfx/2397/2397-preview.mp3',
     duration: '30:00'
   }
 ];
@@ -160,21 +159,6 @@ export default function AudioLibraryPage() {
       </div>
 
       <div className="max-w-6xl mx-auto p-6">
-        {/* Firebase Storage Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6">
-          <h3 className="font-semibold text-blue-900 mb-2">💡 Firebase Storage Setup</h3>
-          <p className="text-sm text-blue-800 mb-3">
-            To use your own audio files:
-          </p>
-          <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-            <li>Upload your audio files (MP3, WAV) to <strong>Firebase Storage</strong></li>
-            <li>Create a folder structure: <code className="bg-blue-100 px-2 py-1 rounded">audio/nature/</code> and <code className="bg-blue-100 px-2 py-1 rounded">audio/asmr/</code></li>
-            <li>Get the download URLs for each file from Firebase Console</li>
-            <li>Update the <code className="bg-blue-100 px-2 py-1 rounded">firebaseUrl</code> field in the audioLibrary array</li>
-            <li>Files will stream directly from Firebase to users</li>
-          </ol>
-        </div>
-
         {/* Category Filter */}
         <div className="flex space-x-3 mb-6">
           {categories.map((category) => (
@@ -299,7 +283,7 @@ export default function AudioLibraryPage() {
       {selectedTrack && (
         <audio
           ref={audioRef}
-          src={selectedTrack.firebaseUrl || selectedTrack.localUrl}
+          src={selectedTrack.url}
           loop
           onEnded={() => setIsPlaying(false)}
         />
