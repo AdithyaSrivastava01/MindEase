@@ -5,28 +5,39 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const systemPrompt = `You are a compassionate mental health companion for college students. Your role is to:
+const systemPrompt = `You are a compassionate, evidence-based mental health companion for college students, trained in Cognitive Behavioral Therapy (CBT) and Acceptance and Commitment Therapy (ACT).
 
-1. Listen actively and empathetically to students' concerns
-2. Use evidence-based techniques from Cognitive Behavioral Therapy (CBT)
-3. Help students identify and challenge negative thought patterns
-4. Suggest healthy coping strategies
-5. Validate their feelings while encouraging positive perspectives
-6. Recognize when professional help may be needed
+Core Therapeutic Approaches:
+
+CBT Techniques:
+- Help identify automatic negative thoughts and cognitive distortions (catastrophizing, all-or-nothing thinking, overgeneralizing)
+- Guide students to examine evidence for/against negative beliefs
+- Use Socratic questioning to challenge unhelpful thinking patterns
+- Suggest behavioral experiments and gradual exposure for anxiety
+- Promote thought records and cognitive reframing
+
+ACT Techniques:
+- Encourage psychological flexibility and present-moment awareness
+- Help students identify their core values and committed actions
+- Teach cognitive defusion (observing thoughts without getting entangled)
+- Practice acceptance of difficult emotions rather than avoidance
+- Use metaphors to illustrate psychological concepts
+- Guide values-based decision making
 
 Guidelines:
-- Be warm, non-judgmental, and supportive
-- Ask open-ended questions to encourage reflection
-- Normalize mental health struggles
-- Suggest concrete coping strategies (breathing exercises, journaling, physical activity)
-- When appropriate, suggest using our in-app features:
-  * Breathing exercises for anxiety, stress, or panic
-  * Mood tracking to help identify patterns and triggers
-- If crisis indicators are detected, emphasize the importance of reaching out to professionals
-- Keep responses concise and conversational (2-4 sentences typically)
-- Use encouraging and hopeful language
+- Be warm, non-judgmental, and supportive while being therapeutically effective
+- Ask powerful open-ended questions that promote insight
+- Normalize mental health struggles and validate emotions
+- Use collaborative language ("Let's explore together...")
+- When appropriate, suggest in-app features:
+  * Breathing exercises for acute anxiety/stress/panic
+  * Mood journal for tracking patterns and self-reflection
+  * ASMR/calming audio for severe distress or overwhelm
+- Gently challenge unhelpful patterns while maintaining rapport
+- Keep responses conversational (2-5 sentences) but therapeutically meaningful
+- Use encouraging, hope-instilling language rooted in evidence-based practice
 
-Important: You are NOT a replacement for professional mental health services. Always encourage students to seek professional help when needed.`;
+Important: You complement but do NOT replace professional mental health services. Encourage professional help when needed.`;
 
 function detectCrisisKeywords(message: string): boolean {
   const crisisKeywords = [
@@ -50,18 +61,32 @@ function detectBreathingExerciseNeed(message: string): boolean {
   return keywords.some(keyword => lowerMessage.includes(keyword));
 }
 
-function detectMoodTrackingNeed(messages: ChatMessage[]): boolean {
-  // Only suggest mood tracking when user is discussing emotional patterns or struggling to identify feelings
+function detectMoodJournalNeed(messages: ChatMessage[]): boolean {
+  // Suggest mood journal for self-reflection, pattern tracking, or processing emotions
   const userMessage = messages[messages.length - 1].content.toLowerCase();
 
-  const moodPatternKeywords = [
+  const journalKeywords = [
     "always feel", "lately i", "recently i", "every day", "pattern",
     "keep feeling", "don't know why i feel", "mood swings", "ups and downs",
     "feelings change", "emotional", "can't figure out", "confused about",
-    "track", "notice", "happening to me", "going through"
+    "track", "notice", "happening to me", "going through", "write",
+    "express myself", "process", "reflect", "understand myself"
   ];
 
-  return moodPatternKeywords.some(keyword => userMessage.includes(keyword));
+  return journalKeywords.some(keyword => userMessage.includes(keyword));
+}
+
+function detectASMRNeed(message: string): boolean {
+  // Suggest ASMR/calming audio for severe distress, overwhelm, or when highly stressed
+  const keywords = [
+    "can't take it", "too much", "overwhelming", "drowning", "breaking down",
+    "falling apart", "can't cope", "exhausted", "burnt out", "hopeless",
+    "give up", "can't handle", "breaking point", "spiraling", "losing it",
+    "need escape", "need to relax", "need calm", "can't think straight"
+  ];
+
+  const lowerMessage = message.toLowerCase();
+  return keywords.some(keyword => lowerMessage.includes(keyword));
 }
 
 interface ChatMessage {
@@ -71,8 +96,19 @@ interface ChatMessage {
 
 export async function POST(req: Request) {
   try {
-    const { messages }: { messages: ChatMessage[] } = await req.json();
+    const { messages, userContext }: { messages: ChatMessage[], userContext?: any } = await req.json();
     const userMessage = messages[messages.length - 1].content;
+
+    // Build dynamic system prompt with user context
+    let contextualPrompt = systemPrompt;
+    if (userContext?.persona) {
+      const personaAdditions = {
+        gentle: "\n\nCurrent Persona: GENTLE - Use extra soft, nurturing language. Be patient and reassuring. Offer comfort first, then gentle guidance.",
+        direct: "\n\nCurrent Persona: DIRECT - Be clear and straightforward while remaining supportive. Focus on actionable advice and practical solutions.",
+        humorous: "\n\nCurrent Persona: HUMOROUS - Use light humor and playful language when appropriate to lift mood. Balance levity with genuine support."
+      };
+      contextualPrompt += personaAdditions[userContext.persona as keyof typeof personaAdditions] || "";
+    }
 
     // Send full conversation history to maintain context
     const completion = await openai.chat.completions.create({
@@ -80,7 +116,7 @@ export async function POST(req: Request) {
       messages: [
         {
           role: "system",
-          content: systemPrompt
+          content: contextualPrompt
         },
         ...messages.map(msg => ({
           role: msg.role as "user" | "assistant",
@@ -94,7 +130,8 @@ export async function POST(req: Request) {
     const aiResponse = completion.choices[0].message.content || "I'm here to listen. Could you tell me more?";
     const hasCrisisKeywords = detectCrisisKeywords(userMessage);
     const suggestBreathing = detectBreathingExerciseNeed(userMessage);
-    const suggestMoodTracking = detectMoodTrackingNeed(messages);
+    const suggestMoodJournal = detectMoodJournalNeed(messages);
+    const suggestASMR = detectASMRNeed(userMessage);
 
     return NextResponse.json({
       content: aiResponse,
@@ -102,7 +139,8 @@ export async function POST(req: Request) {
       crisisLevel: hasCrisisKeywords ? 'critical' : 'none',
       suggestions: {
         breathingExercise: suggestBreathing,
-        moodTracking: suggestMoodTracking
+        moodJournal: suggestMoodJournal,
+        calmingAudio: suggestASMR
       }
     });
   } catch (error) {

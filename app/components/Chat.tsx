@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Heart, AlertCircle, Loader2, Wind, TrendingUp } from 'lucide-react';
+import { Send, Heart, AlertCircle, Loader2, Wind, BookOpen, Volume2, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MoodTracker from './MoodTracker';
 import BreathingExercise from './BreathingExercise';
+import MoodJournal from './MoodJournal';
+import CalmingAudio from './CalmingAudio';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -12,7 +14,8 @@ interface Message {
   timestamp: Date;
   suggestions?: {
     breathingExercise: boolean;
-    moodTracking: boolean;
+    moodJournal: boolean;
+    calmingAudio: boolean;
   };
 }
 
@@ -31,6 +34,10 @@ export default function Chat() {
   const [isTyping, setIsTyping] = useState(false);
   const [showMoodTracker, setShowMoodTracker] = useState(false);
   const [showBreathingExercise, setShowBreathingExercise] = useState(false);
+  const [showMoodJournal, setShowMoodJournal] = useState(false);
+  const [showCalmingAudio, setShowCalmingAudio] = useState(false);
+  const [showPersonaSettings, setShowPersonaSettings] = useState(false);
+  const [selectedPersona, setSelectedPersona] = useState<'gentle' | 'direct' | 'humorous'>('gentle');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -68,7 +75,8 @@ export default function Chat() {
           })),
           userContext: {
             name: localStorage.getItem('userName') || '',
-            recentMood: localStorage.getItem('recentMood') || ''
+            recentMood: localStorage.getItem('recentMood') || '',
+            persona: selectedPersona
           }
         })
       });
@@ -105,12 +113,35 @@ export default function Chat() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-100 p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <Heart className="w-6 h-6 text-pink-500" />
-            <h1 className="text-xl font-semibold text-gray-800">Mindful Companion</h1>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-800">Mindful Companion</h1>
+              <div className="flex items-center space-x-2 mt-0.5">
+                <span className="text-xs text-gray-500">Mode:</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  selectedPersona === 'gentle' ? 'bg-pink-100 text-pink-700' :
+                  selectedPersona === 'direct' ? 'bg-blue-100 text-blue-700' :
+                  'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {selectedPersona === 'gentle' ? '🌸 Gentle' :
+                   selectedPersona === 'direct' ? '🎯 Direct' :
+                   '😊 Humorous'}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="text-sm text-gray-500">
-            Your safe space to talk
+          <div className="flex items-center space-x-4">
+            <div className="text-sm text-gray-500 hidden sm:block">
+              Your safe space to talk
+            </div>
+            <button
+              onClick={() => setShowPersonaSettings(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Change Persona"
+            >
+              <Settings className="w-5 h-5 text-gray-600" />
+            </button>
           </div>
         </div>
       </div>
@@ -199,17 +230,32 @@ export default function Chat() {
                       </motion.button>
                     )}
 
-                    {message.suggestions.moodTracking && (
+                    {message.suggestions.moodJournal && (
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => setShowMoodTracker(true)}
+                        onClick={() => setShowMoodJournal(true)}
+                        className="w-full flex items-center space-x-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+                      >
+                        <BookOpen className="w-5 h-5" />
+                        <div className="text-left">
+                          <div className="font-semibold text-sm">Open Mood Journal</div>
+                          <div className="text-xs opacity-90">Write and reflect</div>
+                        </div>
+                      </motion.button>
+                    )}
+
+                    {message.suggestions.calmingAudio && (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowCalmingAudio(true)}
                         className="w-full flex items-center space-x-3 bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
                       >
-                        <TrendingUp className="w-5 h-5" />
+                        <Volume2 className="w-5 h-5" />
                         <div className="text-left">
-                          <div className="font-semibold text-sm">Track Your Mood</div>
-                          <div className="text-xs opacity-90">Log how you're feeling</div>
+                          <div className="font-semibold text-sm">Try Calming Sounds</div>
+                          <div className="text-xs opacity-90">ASMR & nature audio</div>
                         </div>
                       </motion.button>
                     )}
@@ -357,6 +403,147 @@ export default function Chat() {
               <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
                 <BreathingExercise />
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mood Journal Modal */}
+      <AnimatePresence>
+        {showMoodJournal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowMoodJournal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+            >
+              <button
+                onClick={() => setShowMoodJournal(false)}
+                className="absolute top-4 right-4 bg-white/80 hover:bg-white text-gray-600 rounded-full p-2 transition-colors z-10"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <div className="overflow-y-auto max-h-[90vh]">
+                <MoodJournal onEntryAdded={(entry) => {
+                  setShowMoodJournal(false);
+                  setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: `Thank you for journaling. I noticed you're feeling ${entry.mood}/7. ${
+                      entry.insights ? "I hope the insights were helpful. " : ""
+                    }Would you like to talk about what you wrote?`,
+                    timestamp: new Date()
+                  }]);
+                }} />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Calming Audio Modal */}
+      <AnimatePresence>
+        {showCalmingAudio && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowCalmingAudio(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-2xl w-full"
+            >
+              <button
+                onClick={() => setShowCalmingAudio(false)}
+                className="absolute -top-12 right-0 bg-white/80 hover:bg-white text-gray-600 rounded-full p-2 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <CalmingAudio />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Persona Settings Modal */}
+      <AnimatePresence>
+        {showPersonaSettings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowPersonaSettings(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6"
+            >
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">Choose Your Companion Style</h3>
+              <p className="text-sm text-gray-600 mb-6">Select how you'd like me to communicate with you</p>
+
+              <div className="space-y-3">
+                {[
+                  { value: 'gentle', emoji: '🌸', title: 'Gentle', desc: 'Soft, nurturing, and extra patient' },
+                  { value: 'direct', emoji: '🎯', title: 'Direct', desc: 'Clear, straightforward, and practical' },
+                  { value: 'humorous', emoji: '😊', title: 'Humorous', desc: 'Light, playful, and uplifting' }
+                ].map((persona) => (
+                  <button
+                    key={persona.value}
+                    onClick={() => {
+                      setSelectedPersona(persona.value as any);
+                      setShowPersonaSettings(false);
+                    }}
+                    className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                      selectedPersona === persona.value
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="text-3xl">{persona.emoji}</span>
+                      <div>
+                        <div className="font-semibold text-gray-800">{persona.title}</div>
+                        <div className="text-sm text-gray-600">{persona.desc}</div>
+                      </div>
+                      {selectedPersona === persona.value && (
+                        <svg className="w-6 h-6 text-purple-500 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowPersonaSettings(false)}
+                className="mt-6 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-xl font-medium transition-colors"
+              >
+                Close
+              </button>
             </motion.div>
           </motion.div>
         )}

@@ -7,7 +7,6 @@ import {
   MessageCircle, Brain, Calendar, Award,
   BarChart3, Activity
 } from 'lucide-react';
-import MoodTracker from '../components/MoodTracker';
 import BreathingExercise from '../components/BreathingExercise';
 import Link from 'next/link';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -31,15 +30,18 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    // Load mood history for chart
-    const history = localStorage.getItem('moodHistory');
-    if (history) {
-      const parsed = JSON.parse(history);
-      const chartData = parsed.slice(-7).map((entry: any, index: number) => ({
-        day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index % 7],
-        mood: entry.score,
-        date: new Date(entry.timestamp).toLocaleDateString()
-      }));
+    // Load journal entries for chart (AI-scored mood data)
+    const journalEntries = localStorage.getItem('journalEntries');
+    if (journalEntries) {
+      const parsed = JSON.parse(journalEntries);
+      const chartData = parsed.slice(0, 7).reverse().map((entry: any) => {
+        const entryDate = new Date(entry.date);
+        return {
+          day: entryDate.toLocaleDateString('en-US', { weekday: 'short' }),
+          mood: entry.aiScore || entry.score || 5,
+          date: entryDate.toLocaleDateString()
+        };
+      });
       setMoodData(chartData);
     }
 
@@ -123,17 +125,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={scrollToBreathing}
-            className="p-6 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all"
-          >
-            <div className="text-3xl mb-2">🧘</div>
-            <div className="text-lg font-bold">Breathing Exercise</div>
-            <div className="text-sm opacity-90 mt-1">Take a moment to relax</div>
-          </motion.button>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Link href="/">
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -145,14 +137,40 @@ export default function Dashboard() {
               <div className="text-sm opacity-90 mt-1">Talk to our AI companion</div>
             </motion.button>
           </Link>
+
+          <Link href="/journal">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full p-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all"
+            >
+              <div className="text-3xl mb-2">📔</div>
+              <div className="text-lg font-bold">Mood Journal</div>
+              <div className="text-sm opacity-90 mt-1">AI-powered insights</div>
+            </motion.button>
+          </Link>
+
+          <Link href="/audio">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full p-6 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all"
+            >
+              <div className="text-3xl mb-2">🎵</div>
+              <div className="text-lg font-bold">Calming Sounds</div>
+              <div className="text-sm opacity-90 mt-1">ASMR & nature audio</div>
+            </motion.button>
+          </Link>
+
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="p-6 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all"
+            onClick={scrollToBreathing}
+            className="p-6 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all"
           >
-            <div className="text-3xl mb-2">🏥</div>
-            <div className="text-lg font-bold">Find Counselor</div>
-            <div className="text-sm opacity-90 mt-1">Connect with professionals</div>
+            <div className="text-3xl mb-2">🧘</div>
+            <div className="text-lg font-bold">Breathing Exercise</div>
+            <div className="text-sm opacity-90 mt-1">Take a moment to relax</div>
           </motion.button>
         </div>
 
@@ -234,27 +252,21 @@ export default function Dashboard() {
                 </ResponsiveContainer>
               ) : (
                 <div className="h-64 flex items-center justify-center text-gray-500">
-                  <p>Start tracking moods to see trends</p>
+                  <div className="text-center">
+                    <p className="mb-2">No mood data yet</p>
+                    <Link href="/journal" className="text-blue-600 hover:text-blue-700 font-medium text-sm">
+                      Start journaling to track your mood →
+                    </Link>
+                  </div>
                 </div>
               )}
 
               <div className="mt-6 p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Insight:</strong> Student mood tends to dip mid-week.
-                  Consider scheduling more support activities on Wednesdays.
+                  <strong>How it works:</strong> Your mood chart is automatically generated from your journal entries.
+                  Our AI analyzes your writing and assigns mood scores to track patterns over time.
                 </p>
               </div>
-            </div>
-
-            {/* Mood Tracker */}
-            <div>
-              <MoodTracker onMoodLogged={(entry) => {
-                setMoodData(prev => [...prev, {
-                  day: new Date().toLocaleDateString('en', { weekday: 'short' }),
-                  mood: entry.score,
-                  date: new Date().toLocaleDateString()
-                }].slice(-7));
-              }} />
             </div>
 
             {/* Breathing Exercise Section */}
