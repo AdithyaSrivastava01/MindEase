@@ -77,8 +77,8 @@ export default function BreathingExercise() {
     setCounter(0);
     
     // Log completion
-    const completions = parseInt(localStorage.getItem('breathingCompletions') || '0');
-    localStorage.setItem('breathingCompletions', (completions + 1).toString());
+    const completions = parseInt(sessionStorage.getItem('breathingCompletions') || '0');
+    sessionStorage.setItem('breathingCompletions', (completions + 1).toString());
     
     // Show completion message
     setCycles(totalCycles);

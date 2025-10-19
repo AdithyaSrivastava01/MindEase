@@ -18,7 +18,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadJournalData = () => {
-      const journalEntries = localStorage.getItem('journalEntries');
+      const journalEntries = sessionStorage.getItem('journalEntries');
       if (journalEntries) {
         const parsed = JSON.parse(journalEntries);
         setJournalCount(parsed.length);
@@ -31,12 +31,15 @@ export default function Dashboard() {
 
         // Get last 7 entries for chart
         const last7 = parsed.slice(0, 7);
-        const chartData = last7.map((entry: any) => {
+        const chartData = last7.map((entry: any, idx: number) => {
           const entryDate = new Date(entry.date);
+          const timeStr = entryDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
           return {
-            day: entryDate.toLocaleDateString('en-US', { weekday: 'short' }),
+            name: `Entry ${last7.length - idx}`,
+            day: timeStr, // Show time on X-axis for same-day entries
             mood: entry.aiScore || entry.score || 5,
-            date: entryDate.toLocaleDateString()
+            fullDate: entryDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+            time: timeStr
           };
         }).reverse();
         setMoodData(chartData);
@@ -191,7 +194,26 @@ export default function Dashboard() {
                         backgroundColor: 'white',
                         borderRadius: '12px',
                         border: '1px solid #e5e7eb',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        padding: '12px'
+                      }}
+                      labelStyle={{
+                        color: '#374151',
+                        fontWeight: 'bold',
+                        marginBottom: '4px'
+                      }}
+                      itemStyle={{
+                        color: '#8b5cf6',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                      }}
+                      formatter={(value: any) => [`${value}/10`, 'Mood Score']}
+                      labelFormatter={(label: any, payload: any) => {
+                        if (payload && payload.length > 0) {
+                          const data = payload[0].payload;
+                          return `${data.name} - ${data.fullDate}`;
+                        }
+                        return label;
                       }}
                     />
                     <Area

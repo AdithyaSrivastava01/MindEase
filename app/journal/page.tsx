@@ -21,8 +21,8 @@ export default function JournalPage() {
   const [showNewEntry, setShowNewEntry] = useState(false);
 
   useEffect(() => {
-    // Load entries from localStorage
-    const stored = localStorage.getItem('journalEntries');
+    // Load entries from sessionStorage
+    const stored = sessionStorage.getItem('journalEntries');
     if (stored) {
       const parsed = JSON.parse(stored);
       setEntries(parsed.map((e: any) => ({ ...e, date: new Date(e.date) })));
@@ -53,7 +53,7 @@ export default function JournalPage() {
 
       const updatedEntries = [newEntry, ...entries];
       setEntries(updatedEntries);
-      localStorage.setItem('journalEntries', JSON.stringify(updatedEntries));
+      sessionStorage.setItem('journalEntries', JSON.stringify(updatedEntries));
 
       // Reset form
       setCurrentEntry('');

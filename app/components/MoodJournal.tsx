@@ -25,8 +25,8 @@ export default function MoodJournal({ onEntryAdded }: MoodJournalProps) {
   const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
-    // Load entries from localStorage
-    const stored = localStorage.getItem('journalEntries');
+    // Load entries from sessionStorage
+    const stored = sessionStorage.getItem('journalEntries');
     if (stored) {
       const parsed = JSON.parse(stored);
       setEntries(parsed.map((e: any) => ({ ...e, date: new Date(e.date) })));
@@ -68,7 +68,7 @@ export default function MoodJournal({ onEntryAdded }: MoodJournalProps) {
 
     const updatedEntries = [newEntry, ...entries];
     setEntries(updatedEntries);
-    localStorage.setItem('journalEntries', JSON.stringify(updatedEntries));
+    sessionStorage.setItem('journalEntries', JSON.stringify(updatedEntries));
 
     if (onEntryAdded) onEntryAdded(newEntry);
 

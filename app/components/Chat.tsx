@@ -21,13 +21,7 @@ interface Message {
 }
 
 export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: "Hi there 💙 I'm here to listen and support you. How are you feeling today?",
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showCrisisResources, setShowCrisisResources] = useState(false);
@@ -39,6 +33,57 @@ export default function Chat() {
   const [showCalmingAudio, setShowCalmingAudio] = useState(false);
   const [showPersonaSettings, setShowPersonaSettings] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<'gentle' | 'direct' | 'humorous'>('gentle');
+  const isInitialMount = useRef(true);
+
+  // Load chat history from sessionStorage on mount (persists during session only)
+  useEffect(() => {
+    const savedMessages = sessionStorage.getItem('chatMessages');
+    const savedPersona = sessionStorage.getItem('selectedPersona');
+
+    console.log('Loading chat history...', savedMessages ? 'Found saved messages' : 'No saved messages');
+
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages);
+        // Convert timestamp strings back to Date objects
+        const messagesWithDates = parsed.map((m: any) => ({
+          ...m,
+          timestamp: new Date(m.timestamp)
+        }));
+        console.log('Restored', messagesWithDates.length, 'messages from sessionStorage');
+        setMessages(messagesWithDates);
+      } catch (error) {
+        console.error('Failed to load chat history:', error);
+      }
+    } else {
+      // No saved messages, start with welcome message
+      setMessages([{
+        role: 'assistant',
+        content: "Hi there 💙 I'm here to listen and support you. How are you feeling today?",
+        timestamp: new Date()
+      }]);
+    }
+
+    if (savedPersona) {
+      setSelectedPersona(savedPersona as 'gentle' | 'direct' | 'humorous');
+    }
+
+    isInitialMount.current = false;
+  }, []);
+
+  // Save messages to sessionStorage whenever they change (cleared on browser close)
+  useEffect(() => {
+    // Skip saving on initial mount to avoid overwriting with default state
+    if (!isInitialMount.current && messages.length > 0) {
+      sessionStorage.setItem('chatMessages', JSON.stringify(messages));
+      console.log('Saved', messages.length, 'messages to sessionStorage');
+    }
+  }, [messages]);
+
+  // Save persona to sessionStorage whenever it changes (cleared on browser close)
+  useEffect(() => {
+    sessionStorage.setItem('selectedPersona', selectedPersona);
+  }, [selectedPersona]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -75,8 +120,8 @@ export default function Chat() {
             content: m.content
           })),
           userContext: {
-            name: localStorage.getItem('userName') || '',
-            recentMood: localStorage.getItem('recentMood') || '',
+            name: '',
+            recentMood: '',
             persona: selectedPersona
           }
         })
@@ -138,15 +183,15 @@ export default function Chat() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-500 hidden sm:block">
-              Your safe space to talk
-            </div>
             <button
               onClick={() => setShowPersonaSettings(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors group"
               title="Change Persona"
             >
-              <Settings className="w-5 h-5 text-gray-600" />
+              <span className="text-sm text-gray-600 hidden sm:block group-hover:text-gray-900">
+                Choose your companion style
+              </span>
+              <Settings className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
             </button>
           </div>
         </div>
@@ -299,7 +344,7 @@ export default function Chat() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               placeholder="Share what's on your mind..."
               className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
               disabled={isLoading}

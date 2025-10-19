@@ -53,8 +53,8 @@ export default function MoodTracker({ onMoodLogged }: { onMoodLogged?: (entry: M
   const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
-    // Load recent moods from localStorage
-    const stored = localStorage.getItem('moodHistory');
+    // Load recent moods from sessionStorage
+    const stored = sessionStorage.getItem('moodHistory');
     if (stored) {
       setRecentMoods(JSON.parse(stored));
     }
@@ -94,8 +94,8 @@ export default function MoodTracker({ onMoodLogged }: { onMoodLogged?: (entry: M
 
     const updatedMoods = [...recentMoods, entry].slice(-30); // Keep last 30 entries
     setRecentMoods(updatedMoods);
-    localStorage.setItem('moodHistory', JSON.stringify(updatedMoods));
-    localStorage.setItem('recentMood', currentMood.toString());
+    sessionStorage.setItem('moodHistory', JSON.stringify(updatedMoods));
+    sessionStorage.setItem('recentMood', currentMood.toString());
     
     // Show success animation
     setShowSuccess(true);
