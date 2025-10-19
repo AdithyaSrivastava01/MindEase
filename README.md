@@ -7,6 +7,17 @@
 
   *An AI-powered mental health support platform for college students*
 
+  **[🚀 Live Demo](https://mindease-lilac.vercel.app/)**
+
+  [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=for-the-badge)](https://mindease-lilac.vercel.app/)
+  [![Deployed on Vercel](https://img.shields.io/badge/deployed-vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com)
+  [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38bdf8?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+  [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-412991?style=for-the-badge&logo=openai)](https://openai.com/)
+  [![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
 </div>
 
 ---
